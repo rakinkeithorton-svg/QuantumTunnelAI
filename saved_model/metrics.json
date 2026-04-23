@@ -1,0 +1,411 @@
+{
+  "sample_count": 20000,
+  "epochs": 100,
+  "hidden_dim": 64,
+  "training_loss_final": 4.1e-05,
+  "validation_loss_final": 4.3e-05,
+  "validation_mae": 0.00144681,
+  "validation_log_mae": 0.035267,
+  "scatter_points": [
+    {
+      "true_value": 1.6553867264464323e-06,
+      "predicted_value": 1.6206073174856452e-06
+    },
+    {
+      "true_value": 1.0529207133765e-06,
+      "predicted_value": 1.0227273450760762e-06
+    },
+    {
+      "true_value": 3.5723424568209655e-22,
+      "predicted_value": 3.9415752769338176e-22
+    },
+    {
+      "true_value": 0.001557708692831059,
+      "predicted_value": 0.0015616822290377658
+    },
+    {
+      "true_value": 7.114822809324443e-06,
+      "predicted_value": 6.788554445199927e-06
+    },
+    {
+      "true_value": 3.0849420222719113e-11,
+      "predicted_value": 3.572748444003729e-11
+    },
+    {
+      "true_value": 3.178232203360282e-23,
+      "predicted_value": 3.5635546000744567e-23
+    },
+    {
+      "true_value": 0.0002813821696521145,
+      "predicted_value": 0.0002905317633809517
+    },
+    {
+      "true_value": 1.714262533582444e-17,
+      "predicted_value": 1.770897797282781e-17
+    },
+    {
+      "true_value": 0.15253776061614358,
+      "predicted_value": 0.15391535066673226
+    },
+    {
+      "true_value": 2.0730157560262807e-23,
+      "predicted_value": 2.3697694137779094e-23
+    },
+    {
+      "true_value": 1.4446470901264172e-05,
+      "predicted_value": 1.4465918239412945e-05
+    },
+    {
+      "true_value": 4.3154106052993437e-13,
+      "predicted_value": 4.626132274846162e-13
+    },
+    {
+      "true_value": 0.0004083924818883999,
+      "predicted_value": 0.00042420248029335797
+    },
+    {
+      "true_value": 0.01282776007903853,
+      "predicted_value": 0.011707293351091006
+    },
+    {
+      "true_value": 0.028215504543665965,
+      "predicted_value": 0.027813726162562863
+    },
+    {
+      "true_value": 0.005291312161835368,
+      "predicted_value": 0.004790925333156126
+    },
+    {
+      "true_value": 2.0638649291636106e-18,
+      "predicted_value": 2.262408993951521e-18
+    },
+    {
+      "true_value": 6.888184734988615e-21,
+      "predicted_value": 8.157328535859571e-21
+    },
+    {
+      "true_value": 2.0939247507476491e-32,
+      "predicted_value": 2.6475041704965127e-32
+    },
+    {
+      "true_value": 5.52603608453285e-06,
+      "predicted_value": 6.103784657406928e-06
+    },
+    {
+      "true_value": 1.8679812928010946e-15,
+      "predicted_value": 2.08060754961209e-15
+    },
+    {
+      "true_value": 3.136723043158305e-10,
+      "predicted_value": 3.4004992841198825e-10
+    },
+    {
+      "true_value": 0.1402781929666396,
+      "predicted_value": 0.1444195198288527
+    },
+    {
+      "true_value": 1.5768899652748287e-05,
+      "predicted_value": 1.624006936292047e-05
+    },
+    {
+      "true_value": 5.4929742317792294e-09,
+      "predicted_value": 5.861917853196819e-09
+    },
+    {
+      "true_value": 1.1533487185513855e-18,
+      "predicted_value": 1.3870425823635882e-18
+    },
+    {
+      "true_value": 0.05317086277606845,
+      "predicted_value": 0.055735683442193845
+    },
+    {
+      "true_value": 0.0026092968668989572,
+      "predicted_value": 0.002433071682124158
+    },
+    {
+      "true_value": 5.45804105821693e-10,
+      "predicted_value": 6.226093630120568e-10
+    },
+    {
+      "true_value": 3.9401967107686306e-24,
+      "predicted_value": 4.733747482419501e-24
+    },
+    {
+      "true_value": 0.012851731549699959,
+      "predicted_value": 0.012551931695287186
+    },
+    {
+      "true_value": 0.06396327502209793,
+      "predicted_value": 0.06297597576380387
+    },
+    {
+      "true_value": 2.315492719469806e-12,
+      "predicted_value": 2.666762482776262e-12
+    },
+    {
+      "true_value": 0.00873238461138686,
+      "predicted_value": 0.00891619884916124
+    },
+    {
+      "true_value": 1.1460591251719412e-22,
+      "predicted_value": 1.3167904655893979e-22
+    },
+    {
+      "true_value": 1.3123828973523888e-10,
+      "predicted_value": 1.6592193512458585e-10
+    },
+    {
+      "true_value": 2.756379892894995e-07,
+      "predicted_value": 2.9603101007970294e-07
+    },
+    {
+      "true_value": 2.759865996717431e-14,
+      "predicted_value": 2.8320525142218592e-14
+    },
+    {
+      "true_value": 1.3450879007792987e-12,
+      "predicted_value": 1.4304540640569168e-12
+    },
+    {
+      "true_value": 8.460742705069574e-08,
+      "predicted_value": 9.089035414865162e-08
+    },
+    {
+      "true_value": 1.976381570500516e-14,
+      "predicted_value": 2.1190526759173888e-14
+    },
+    {
+      "true_value": 3.766735697924984e-23,
+      "predicted_value": 3.909079109520627e-23
+    },
+    {
+      "true_value": 1.2276558319035104e-06,
+      "predicted_value": 1.2570317445843072e-06
+    },
+    {
+      "true_value": 0.08598964002686843,
+      "predicted_value": 0.07526116039661473
+    },
+    {
+      "true_value": 2.0369473889220146e-05,
+      "predicted_value": 1.9536145982232505e-05
+    },
+    {
+      "true_value": 6.616506072065305e-07,
+      "predicted_value": 6.966332226169045e-07
+    },
+    {
+      "true_value": 3.251289873389038e-10,
+      "predicted_value": 3.450605596120305e-10
+    },
+    {
+      "true_value": 2.8751097677073023e-06,
+      "predicted_value": 2.9187380479247513e-06
+    },
+    {
+      "true_value": 8.507515662295275e-21,
+      "predicted_value": 9.504709535000757e-21
+    },
+    {
+      "true_value": 3.003599590826661e-08,
+      "predicted_value": 2.699990132193088e-08
+    },
+    {
+      "true_value": 1.5051181728488577e-27,
+      "predicted_value": 1.8805877785555157e-27
+    },
+    {
+      "true_value": 7.073853236766428e-13,
+      "predicted_value": 7.107895664987281e-13
+    },
+    {
+      "true_value": 0.26126903394429235,
+      "predicted_value": 0.250756564780544
+    },
+    {
+      "true_value": 9.779676810694167e-27,
+      "predicted_value": 1.151129988667556e-26
+    },
+    {
+      "true_value": 0.0011064811779406129,
+      "predicted_value": 0.001080156726445828
+    },
+    {
+      "true_value": 1.5685178740894923e-07,
+      "predicted_value": 1.5786820231436353e-07
+    },
+    {
+      "true_value": 7.757984324303965e-10,
+      "predicted_value": 8.90532328796625e-10
+    },
+    {
+      "true_value": 0.00011336946302597558,
+      "predicted_value": 0.0001083440582547124
+    },
+    {
+      "true_value": 0.002191867642920166,
+      "predicted_value": 0.002633458421789215
+    },
+    {
+      "true_value": 1.0548768833845297e-14,
+      "predicted_value": 1.150504549489901e-14
+    },
+    {
+      "true_value": 1.293088993460484e-15,
+      "predicted_value": 1.4248231560604544e-15
+    },
+    {
+      "true_value": 0.011966674032607557,
+      "predicted_value": 0.01225362801103049
+    },
+    {
+      "true_value": 5.774425714344965e-06,
+      "predicted_value": 5.50617420646749e-06
+    },
+    {
+      "true_value": 1.3879427695040587e-19,
+      "predicted_value": 1.7860542980163927e-19
+    },
+    {
+      "true_value": 1.2238073900194085e-08,
+      "predicted_value": 1.213250050028832e-08
+    },
+    {
+      "true_value": 1.2242446466554831e-08,
+      "predicted_value": 1.1982233420337844e-08
+    },
+    {
+      "true_value": 3.332767757322033e-07,
+      "predicted_value": 3.203295653039329e-07
+    },
+    {
+      "true_value": 5.62751990178617e-14,
+      "predicted_value": 6.152245209082942e-14
+    },
+    {
+      "true_value": 1.652028544946698e-20,
+      "predicted_value": 1.7745311611439787e-20
+    },
+    {
+      "true_value": 7.450802879095561e-08,
+      "predicted_value": 7.130850608394105e-08
+    },
+    {
+      "true_value": 0.03325181398376532,
+      "predicted_value": 0.03152904961728114
+    },
+    {
+      "true_value": 7.240771523547278e-07,
+      "predicted_value": 7.002197625245598e-07
+    },
+    {
+      "true_value": 0.001687211541454223,
+      "predicted_value": 0.0016872451367860731
+    },
+    {
+      "true_value": 3.7300911728459865e-05,
+      "predicted_value": 3.266814761582572e-05
+    },
+    {
+      "true_value": 2.4782822664959034e-16,
+      "predicted_value": 2.740666893531587e-16
+    },
+    {
+      "true_value": 1.7047077136985314e-06,
+      "predicted_value": 1.64274290354927e-06
+    },
+    {
+      "true_value": 1.5312933754079023e-16,
+      "predicted_value": 1.5364226083512016e-16
+    },
+    {
+      "true_value": 0.15467605896342,
+      "predicted_value": 0.11861692722028881
+    },
+    {
+      "true_value": 1.197805364871024e-10,
+      "predicted_value": 1.3649475126419636e-10
+    },
+    {
+      "true_value": 7.279057848049327e-08,
+      "predicted_value": 7.449054115966767e-08
+    },
+    {
+      "true_value": 0.00013377255300811266,
+      "predicted_value": 0.00014616933710416755
+    },
+    {
+      "true_value": 0.012344020241023913,
+      "predicted_value": 0.014381462651992574
+    },
+    {
+      "true_value": 6.093465800738033e-05,
+      "predicted_value": 6.081616915681743e-05
+    },
+    {
+      "true_value": 1.8144072063290152e-15,
+      "predicted_value": 1.9399903436232304e-15
+    },
+    {
+      "true_value": 1.2333732917776767e-08,
+      "predicted_value": 1.248896200507229e-08
+    },
+    {
+      "true_value": 5.660297888920079e-20,
+      "predicted_value": 5.975366000203011e-20
+    },
+    {
+      "true_value": 2.862662114847777e-16,
+      "predicted_value": 3.1094445334966627e-16
+    },
+    {
+      "true_value": 0.010249579677727822,
+      "predicted_value": 0.009621716626680394
+    },
+    {
+      "true_value": 0.00015319197493184956,
+      "predicted_value": 0.00017356634341795791
+    },
+    {
+      "true_value": 3.8706854904400644e-17,
+      "predicted_value": 4.1905610207554365e-17
+    },
+    {
+      "true_value": 5.4616070899922145e-21,
+      "predicted_value": 5.9105417949579236e-21
+    },
+    {
+      "true_value": 4.535385242596872e-07,
+      "predicted_value": 5.004625646071623e-07
+    },
+    {
+      "true_value": 8.752228118155974e-06,
+      "predicted_value": 9.675014485247945e-06
+    },
+    {
+      "true_value": 5.965491542908971e-19,
+      "predicted_value": 7.2245221468896e-19
+    },
+    {
+      "true_value": 0.015198082869150666,
+      "predicted_value": 0.014347100527427456
+    },
+    {
+      "true_value": 0.0019427342840832433,
+      "predicted_value": 0.001983049061212444
+    },
+    {
+      "true_value": 2.036068928663851e-11,
+      "predicted_value": 2.035478255902384e-11
+    },
+    {
+      "true_value": 6.7064289294467e-29,
+      "predicted_value": 8.877662949285848e-29
+    },
+    {
+      "true_value": 0.010025076154254242,
+      "predicted_value": 0.011071603817471272
+    }
+  ]
+}

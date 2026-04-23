@@ -1,0 +1,1403 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuantumTunnelAI</title>
+    <link rel="stylesheet" href="{% static 'tunneling/style.css' %}">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="top-rail">
+            <div class="brand-lockup">
+                <span class="brand-mark">QT</span>
+                <div>
+                    <p class="brand-name">QuantumTunnelAI</p>
+                    <p class="brand-subtitle">Rectangular-Barrier Quantum Tunneling Workspace</p>
+                </div>
+            </div>
+            <div class="rail-badges">
+                <span>E/V0 = {{ energy_ratio_display }}</span>
+                <span>Exact T = {{ exact_display }}</span>
+                <span>Mean sweep error = {{ comparison_mean_error_display }}</span>
+            </div>
+        </section>
+
+        <section class="hero-card">
+            <div class="hero-copy">
+                <p class="eyebrow">Physics-Consistent Interface</p>
+                <h1>Exact barrier physics, learned prediction, and wavefunction structure in one workspace.</h1>
+                <p class="intro">
+                    This interface models stationary transmission through a finite rectangular barrier in the tunneling regime
+                    <code>E &lt; V0</code>. Every chart is driven by exact quantum-mechanical quantities and compared against the trained neural model.
+                </p>
+                <div class="hero-signals">
+                    <div>
+                        <span>Barrier height</span>
+                        <strong>{{ selected_barrier_height }} eV</strong>
+                    </div>
+                    <div>
+                        <span>Particle energy</span>
+                        <strong>{{ selected_particle_energy }} eV</strong>
+                    </div>
+                    <div>
+                        <span>Barrier width</span>
+                        <strong>{{ selected_barrier_width }} nm</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-math">
+                <span class="math-caption">Current Physical Scope</span>
+                <div class="formula">E &lt; V0, one-dimensional finite barrier</div>
+                <p>
+                    The exact solver evaluates transmission from the stationary Schrödinger equation. The neural model is used only as a learned approximation against that baseline.
+                </p>
+                <div class="hero-panel-grid">
+                    <div>
+                        <span>Exact output</span>
+                        <strong>{{ exact_display }}</strong>
+                    </div>
+                    <div>
+                        <span>Neural output</span>
+                        <strong>{{ prediction_display }}</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-grid">
+            <section class="panel">
+                <div class="section-heading">
+                    <h2>Simulation Control</h2>
+                    <p>Set the barrier parameters for the stationary tunneling calculation.</p>
+                </div>
+                <form method="post" class="prediction-form">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="field">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            <small>{{ field.help_text }}</small>
+                            {% for error in field.errors %}
+                                <p class="error">{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                    <button type="submit">Update Simulation</button>
+                </form>
+
+                {% if model_error %}
+                    <div class="alert">
+                        <strong>Model missing.</strong>
+                        <p>{{ model_error }}</p>
+                    </div>
+                {% endif %}
+            </section>
+
+            <section class="panel results-panel">
+                <div class="section-heading">
+                    <h2>Inference Output</h2>
+                    <p>Exact transmission remains the physical reference; the neural network is evaluated against it.</p>
+                </div>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Exact T</span>
+                        <strong>{{ exact_display }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Predicted T</span>
+                        <strong>{{ prediction_display }}</strong>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Relative error</span>
+                        <strong>{{ relative_error_display }}</strong>
+                    </div>
+                </div>
+
+                <div class="metrics-strip extended-metrics">
+                    <div>
+                        <span>Reflection R</span>
+                        <strong>{{ reflection_display }}</strong>
+                    </div>
+                    <div>
+                        <span>Penetration depth</span>
+                        <strong>{{ penetration_depth_display }}</strong>
+                    </div>
+                    <div>
+                        <span>Validation MAE</span>
+                        <strong>{{ metrics.validation_mae|default:"pending" }}</strong>
+                    </div>
+                    <div>
+                        <span>Training samples</span>
+                        <strong>{{ metrics.sample_count|default:"pending" }}</strong>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <section class="science-grid">
+            <section class="panel science-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Barrier Physics</h2>
+                        <p>Rectangular potential profile with the particle energy level and the classically forbidden region.</p>
+                    </div>
+                </div>
+                <div class="panel-hud">
+                    <div><span>Energy gap</span><strong>{{ physics_payload.energy_gap_ev|default_if_none:"" }} eV</strong></div>
+                    <div><span>Forbidden width</span><strong>{{ selected_barrier_width }} nm</strong></div>
+                    <div><span>Penetration depth</span><strong>{{ penetration_depth_display }}</strong></div>
+                </div>
+                <div class="canvas-stage">
+                    <canvas id="physicsCanvas" width="700" height="380" aria-label="Rectangular barrier physics plot"></canvas>
+                    <div id="physicsTooltip" class="chart-tooltip" hidden></div>
+                </div>
+            </section>
+
+            <section class="panel science-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Neural Network Report</h2>
+                        <p>The learned model is benchmarked only within the same under-barrier regime used by the exact solver.</p>
+                    </div>
+                </div>
+                <div class="network-summary">
+                    <div class="network-stack">
+                        <div class="network-column">
+                            <span>Inputs</span>
+                            <strong>V0, E, a</strong>
+                        </div>
+                        <div class="network-divider"></div>
+                        <div class="network-column">
+                            <span>Hidden layers</span>
+                            <strong>{{ metrics.hidden_dim|default:"64" }} + {{ metrics.hidden_dim|default:"64" }} neurons</strong>
+                        </div>
+                        <div class="network-divider"></div>
+                        <div class="network-column">
+                            <span>Output</span>
+                            <strong>T(V0, E, a)</strong>
+                        </div>
+                    </div>
+                    <div class="network-notes">
+                        <div>
+                            <span>Training domain</span>
+                            <strong>Finite rectangular barriers with E &lt; V0</strong>
+                        </div>
+                        <div>
+                            <span>Loss target</span>
+                            <strong>log10(T) regression for numerical stability</strong>
+                        </div>
+                        <div>
+                            <span>Training schedule</span>
+                            <strong>{{ metrics.epochs|default:"100" }} epochs on {{ metrics.sample_count|default:"20000" }} generated states</strong>
+                        </div>
+                        <div>
+                            <span>Current comparison</span>
+                            <strong>{{ relative_error_display }} relative error against exact physics</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel science-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Wavefunction Structure</h2>
+                        <p>Top: real part of the stationary wavefunction. Bottom: probability density |ψ|². The barrier region is shaded.</p>
+                    </div>
+                    <label class="toolbar-control">
+                        <span>Upper trace</span>
+                        <select id="waveTopMode">
+                            <option value="real">Real part</option>
+                            <option value="imag">Imaginary part</option>
+                            <option value="magnitude">Magnitude</option>
+                        </select>
+                    </label>
+                </div>
+                <canvas id="wavefunctionCanvas" width="700" height="430" aria-label="Wavefunction and probability density plot"></canvas>
+            </section>
+
+            <section class="panel science-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Exact vs Neural Sweep</h2>
+                        <p>Transmission plotted against barrier width for the current V0 and E, using a logarithmic transmission scale.</p>
+                    </div>
+                </div>
+                <div class="panel-hud">
+                    <div><span>Current width</span><strong>{{ selected_barrier_width }} nm</strong></div>
+                    <div><span>Mean error</span><strong>{{ comparison_mean_error_display }}</strong></div>
+                    <div><span>Max error</span><strong>{{ comparison_max_error_display }}</strong></div>
+                </div>
+                <div class="canvas-stage">
+                    <canvas id="comparisonCanvas" width="700" height="430" aria-label="Exact and neural transmission comparison"></canvas>
+                    <div id="comparisonTooltip" class="chart-tooltip" hidden></div>
+                </div>
+            </section>
+        </section>
+
+        <section class="panel immersive-panel">
+            <div class="panel-header">
+                <div>
+                    <h2>Transmission Landscape</h2>
+                    <p>Three-dimensional map of exact transmission, neural prediction, or relative error across particle energy and barrier width for the current barrier height.</p>
+                </div>
+                <div class="surface-status">
+                    <span>Barrier height</span>
+                    <strong>{{ surface_barrier_height }} eV</strong>
+                </div>
+            </div>
+            <div class="surface-overview">
+                <div class="surface-overview-card">
+                    <span>Energy span</span>
+                    <strong id="surfaceEnergyRange">Loading...</strong>
+                </div>
+                <div class="surface-overview-card">
+                    <span>Width span</span>
+                    <strong id="surfaceWidthRange">Loading...</strong>
+                </div>
+                <div class="surface-overview-card">
+                    <span>Active view</span>
+                    <strong id="surfaceActiveView">Loading...</strong>
+                </div>
+                <div class="surface-overview-card">
+                    <span>Interaction</span>
+                    <strong id="surfaceInteractionState">Drag, zoom, inspect</strong>
+                </div>
+            </div>
+            <div class="surface-layout">
+                <div class="surface-stage">
+                    <canvas id="surfacePlot" width="920" height="520" aria-label="Interactive three-dimensional transmission surface"></canvas>
+                    <div id="surfaceHint" class="surface-hint">Drag to rotate. Scroll to zoom. Click to pin a sample.</div>
+                    <div id="surfaceTooltip" class="surface-tooltip" hidden></div>
+                </div>
+                <aside class="surface-controls">
+                    <div class="surface-mode-card">
+                        <span class="surface-card-label">Landscape guide</span>
+                        <strong id="surfaceModeTitle">Exact transmission surface</strong>
+                        <p id="surfaceModeDescription">Read the landscape as barrier width on one axis, particle energy on the other, and transmission encoded by both height and color.</p>
+                    </div>
+                    <div class="surface-actions">
+                        <button type="button" class="surface-action" data-surface-view="reset">Reset view</button>
+                        <button type="button" class="surface-action" data-surface-view="top">Top view</button>
+                        <button type="button" class="surface-action" data-surface-view="side">Side view</button>
+                    </div>
+                    <label class="control-group">
+                        <div class="control-label">
+                            <span>Surface mode</span>
+                            <strong id="surfaceModeValue">Exact</strong>
+                        </div>
+                        <select id="surfaceMode">
+                            <option value="exact">Analytical surface</option>
+                            <option value="predicted">Neural surface</option>
+                            <option value="error">Relative error</option>
+                        </select>
+                    </label>
+                    <label class="control-group">
+                        <div class="control-label">
+                            <span>Azimuth</span>
+                            <strong id="surfaceAzimuthValue">-34°</strong>
+                        </div>
+                        <input id="surfaceAzimuth" type="range" min="-180" max="180" value="-34">
+                    </label>
+                    <label class="control-group">
+                        <div class="control-label">
+                            <span>Elevation</span>
+                            <strong id="surfaceElevationValue">52°</strong>
+                        </div>
+                        <input id="surfaceElevation" type="range" min="10" max="85" value="52">
+                    </label>
+                    <label class="control-group">
+                        <div class="control-label">
+                            <span>Height scale</span>
+                            <strong id="surfaceHeightScaleValue">108%</strong>
+                        </div>
+                        <input id="surfaceHeightScale" type="range" min="60" max="220" value="108">
+                    </label>
+                    <label class="control-group">
+                        <div class="control-label">
+                            <span>Contour density</span>
+                            <strong id="surfaceContoursValue">5</strong>
+                        </div>
+                        <input id="surfaceContours" type="range" min="2" max="10" value="5">
+                    </label>
+                    <label class="control-group">
+                        <div class="control-label">
+                            <span>Palette</span>
+                            <strong id="surfacePaletteValue">Thermal</strong>
+                        </div>
+                        <select id="surfacePalette">
+                            <option value="thermal">Thermal</option>
+                            <option value="aurora">Aurora</option>
+                            <option value="voltage">Voltage</option>
+                        </select>
+                    </label>
+                    <div class="surface-legend">
+                        <div class="legend-ramp" id="legendRamp"></div>
+                        <div class="legend-scale">
+                            <span id="legendMin">Lower</span>
+                            <span id="legendMax">Higher</span>
+                        </div>
+                    </div>
+                    <div class="surface-inspector">
+                        <span class="surface-card-label">Point inspector</span>
+                        <strong id="surfaceInspectorTitle">Center sample</strong>
+                        <div class="surface-inspector-grid">
+                            <div>
+                                <span>Energy</span>
+                                <strong id="surfaceInspectorEnergy">-</strong>
+                            </div>
+                            <div>
+                                <span>Width</span>
+                                <strong id="surfaceInspectorWidth">-</strong>
+                            </div>
+                            <div>
+                                <span>Exact T</span>
+                                <strong id="surfaceInspectorExact">-</strong>
+                            </div>
+                            <div>
+                                <span>Neural T</span>
+                                <strong id="surfaceInspectorPredicted">-</strong>
+                            </div>
+                            <div>
+                                <span>Relative error</span>
+                                <strong id="surfaceInspectorError">-</strong>
+                            </div>
+                            <div>
+                                <span>Zoom</span>
+                                <strong id="surfaceZoomValue">1.00×</strong>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+        <section class="logic-note">
+            <p>
+                Current interface assumptions: one-dimensional finite rectangular barrier, stationary state, and tunneling regime only. Above-barrier scattering and time-dependent dynamics are intentionally excluded from this view.
+            </p>
+        </section>
+    </main>
+
+    {{ physics_payload_json|json_script:"physics-payload-data" }}
+    {{ wavefunction_payload_json|json_script:"wavefunction-payload-data" }}
+    {{ comparison_payload_json|json_script:"comparison-payload-data" }}
+    {{ surface_payload_json|json_script:"surface-payload-data" }}
+    <script>
+        const physicsPayload = JSON.parse(document.getElementById("physics-payload-data").textContent);
+        const wavefunctionPayload = JSON.parse(document.getElementById("wavefunction-payload-data").textContent);
+        const comparisonPayload = JSON.parse(document.getElementById("comparison-payload-data").textContent);
+        const surfacePayload = JSON.parse(document.getElementById("surface-payload-data").textContent);
+
+        const physicsCanvas = document.getElementById("physicsCanvas");
+        const wavefunctionCanvas = document.getElementById("wavefunctionCanvas");
+        const comparisonCanvas = document.getElementById("comparisonCanvas");
+        const surfaceCanvas = document.getElementById("surfacePlot");
+        const physicsTooltip = document.getElementById("physicsTooltip");
+        const comparisonTooltip = document.getElementById("comparisonTooltip");
+        const waveTopMode = document.getElementById("waveTopMode");
+        const surfaceContext = surfaceCanvas.getContext("2d");
+        const surfaceTooltip = document.getElementById("surfaceTooltip");
+        const surfacePresetButtons = document.querySelectorAll("[data-surface-view]");
+        const surfaceUI = {
+            energyRange: document.getElementById("surfaceEnergyRange"),
+            widthRange: document.getElementById("surfaceWidthRange"),
+            activeView: document.getElementById("surfaceActiveView"),
+            interactionState: document.getElementById("surfaceInteractionState"),
+            modeTitle: document.getElementById("surfaceModeTitle"),
+            modeDescription: document.getElementById("surfaceModeDescription"),
+            modeValue: document.getElementById("surfaceModeValue"),
+            azimuthValue: document.getElementById("surfaceAzimuthValue"),
+            elevationValue: document.getElementById("surfaceElevationValue"),
+            heightScaleValue: document.getElementById("surfaceHeightScaleValue"),
+            contoursValue: document.getElementById("surfaceContoursValue"),
+            paletteValue: document.getElementById("surfacePaletteValue"),
+            legendMin: document.getElementById("legendMin"),
+            legendMax: document.getElementById("legendMax"),
+            inspectorTitle: document.getElementById("surfaceInspectorTitle"),
+            inspectorEnergy: document.getElementById("surfaceInspectorEnergy"),
+            inspectorWidth: document.getElementById("surfaceInspectorWidth"),
+            inspectorExact: document.getElementById("surfaceInspectorExact"),
+            inspectorPredicted: document.getElementById("surfaceInspectorPredicted"),
+            inspectorError: document.getElementById("surfaceInspectorError"),
+            zoomValue: document.getElementById("surfaceZoomValue"),
+        };
+        const physicsState = {};
+        const comparisonState = {};
+
+        function clamp(value, min, max) {
+            return Math.min(max, Math.max(min, value));
+        }
+
+        function lerp(start, end, amount) {
+            return start + (end - start) * amount;
+        }
+
+        function parseColor(hex) {
+            const clean = hex.replace("#", "");
+            return {
+                r: parseInt(clean.slice(0, 2), 16),
+                g: parseInt(clean.slice(2, 4), 16),
+                b: parseInt(clean.slice(4, 6), 16),
+            };
+        }
+
+        function mixColor(a, b, t) {
+            return {
+                r: Math.round(lerp(a.r, b.r, t)),
+                g: Math.round(lerp(a.g, b.g, t)),
+                b: Math.round(lerp(a.b, b.b, t)),
+            };
+        }
+
+        function colorToString(color, alpha = 1) {
+            return `rgba(${color.r}, ${color.g}, ${color.b}, ${alpha})`;
+        }
+
+        function toTitleCase(value) {
+            return value.charAt(0).toUpperCase() + value.slice(1);
+        }
+
+        function formatTransmission(value) {
+            if (value === null || value === undefined) {
+                return "Unavailable";
+            }
+            if (value === 0) {
+                return "0";
+            }
+            if (Math.abs(value) >= 1e-3 && Math.abs(value) < 1) {
+                return value.toFixed(4);
+            }
+            if (Math.abs(value) >= 1 && Math.abs(value) < 1000) {
+                return value.toFixed(3);
+            }
+            return value.toExponential(2);
+        }
+
+        function formatPercent(value) {
+            if (value === null || value === undefined) {
+                return "Unavailable";
+            }
+            return `${(value * 100).toFixed(value < 0.1 ? 2 : 1)}%`;
+        }
+
+        const palettes = {
+            thermal: ["#123c69", "#0c7b93", "#2ec4b6", "#ffd166", "#f77f00", "#d62828"],
+            aurora: ["#102542", "#0f8b8d", "#44cfcb", "#f7f3e3", "#ffb703", "#fb8500"],
+            voltage: ["#1d3557", "#457b9d", "#4cc9f0", "#90be6d", "#f9c74f", "#f94144"],
+        };
+
+        const surfaceModeMeta = {
+            exact: {
+                shortLabel: "Exact",
+                title: "Exact transmission surface",
+                description: "Analytical tunneling probability across particle energy and barrier width. Height and color both rise as transmission becomes larger.",
+            },
+            predicted: {
+                shortLabel: "Neural",
+                title: "Neural transmission surface",
+                description: "Learned approximation of the same transmission field. Use this view to compare the model shape against the exact physical surface.",
+            },
+            error: {
+                shortLabel: "Error",
+                title: "Relative error surface",
+                description: "Local fractional mismatch |T_nn - T_exact| / T_exact. Higher ridges and hotter colors mark where the neural approximation is weakest.",
+            },
+        };
+
+        const surfacePresets = {
+            reset: { azimuth: -34, elevation: 52, heightScale: 108, contours: 5, zoom: 1.0 },
+            top: { azimuth: -4, elevation: 84, heightScale: 92, contours: 4, zoom: 1.02 },
+            side: { azimuth: -92, elevation: 24, heightScale: 126, contours: 4, zoom: 0.98 },
+        };
+
+        function getPaletteColor(name, t) {
+            const stops = palettes[name] || palettes.thermal;
+            const clamped = clamp(t, 0, 1);
+            const scaled = clamped * (stops.length - 1);
+            const index = Math.min(stops.length - 2, Math.floor(scaled));
+            const blend = scaled - index;
+            return mixColor(parseColor(stops[index]), parseColor(stops[index + 1]), blend);
+        }
+
+        function getSurfaceGrid(mode) {
+            if (mode === "predicted" && surfacePayload.predicted_grid.length) {
+                return surfacePayload.predicted_grid;
+            }
+            if (mode === "error" && surfacePayload.error_grid.length) {
+                return surfacePayload.error_grid;
+            }
+            return surfacePayload.exact_grid;
+        }
+
+        function getSurfaceRange(mode) {
+            const values = getSurfaceGrid(mode).flat();
+            return {
+                min: Math.min(...values),
+                max: Math.max(...values),
+            };
+        }
+
+        function renderLegend(name, mode, range) {
+            const legendRamp = document.getElementById("legendRamp");
+            legendRamp.style.background = `linear-gradient(90deg, ${(palettes[name] || palettes.thermal).join(", ")})`;
+            if (mode === "error") {
+                surfaceUI.legendMin.textContent = formatPercent(range.min);
+                surfaceUI.legendMax.textContent = formatPercent(range.max);
+            } else {
+                surfaceUI.legendMin.textContent = formatTransmission(range.min);
+                surfaceUI.legendMax.textContent = formatTransmission(range.max);
+            }
+        }
+
+        function drawGrid(context, width, height, paddingX, paddingY, stepsX, stepsY, color) {
+            context.strokeStyle = color;
+            context.lineWidth = 1;
+            for (let step = 0; step <= stepsX; step += 1) {
+                const x = paddingX.left + ((width - paddingX.left - paddingX.right) / stepsX) * step;
+                context.beginPath();
+                context.moveTo(x, paddingY.top);
+                context.lineTo(x, height - paddingY.bottom);
+                context.stroke();
+            }
+            for (let step = 0; step <= stepsY; step += 1) {
+                const y = paddingY.top + ((height - paddingY.top - paddingY.bottom) / stepsY) * step;
+                context.beginPath();
+                context.moveTo(paddingX.left, y);
+                context.lineTo(width - paddingX.right, y);
+                context.stroke();
+            }
+        }
+
+        function drawBarrierPhysics() {
+            const context = physicsCanvas.getContext("2d");
+            const width = physicsCanvas.width;
+            const height = physicsCanvas.height;
+            const pad = { left: 66, right: 24, top: 28, bottom: 46 };
+            context.clearRect(0, 0, width, height);
+
+            const background = context.createLinearGradient(0, 0, width, height);
+            background.addColorStop(0, "rgba(255, 251, 246, 0.98)");
+            background.addColorStop(1, "rgba(245, 230, 214, 0.96)");
+            context.fillStyle = background;
+            context.fillRect(0, 0, width, height);
+
+            drawGrid(context, width, height, { left: pad.left, right: pad.right }, { top: pad.top, bottom: pad.bottom }, 6, 5, "rgba(88, 67, 50, 0.1)");
+
+            const xValues = physicsPayload.x_nm;
+            const potentials = physicsPayload.potential_profile_ev;
+            const xMin = Math.min(...xValues);
+            const xMax = Math.max(...xValues);
+            const energyMax = Math.max(physicsPayload.barrier_height_ev * 1.15, physicsPayload.particle_energy_ev * 1.3, 1);
+
+            const scaleX = (value) => pad.left + ((value - xMin) / (xMax - xMin)) * (width - pad.left - pad.right);
+            const scaleY = (value) => height - pad.bottom - (value / energyMax) * (height - pad.top - pad.bottom);
+
+            const barrierLeft = scaleX(physicsPayload.barrier_left_nm);
+            const barrierRight = scaleX(physicsPayload.barrier_right_nm);
+            context.fillStyle = "rgba(255, 173, 66, 0.18)";
+            context.fillRect(barrierLeft, pad.top, barrierRight - barrierLeft, height - pad.top - pad.bottom);
+
+            context.strokeStyle = "#f08c2e";
+            context.lineWidth = 3;
+            context.beginPath();
+            for (let index = 0; index < xValues.length; index += 1) {
+                const x = scaleX(xValues[index]);
+                const y = scaleY(potentials[index]);
+                if (index === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+            }
+            context.stroke();
+
+            const energyY = scaleY(physicsPayload.particle_energy_ev);
+            context.setLineDash([8, 7]);
+            context.strokeStyle = "#1f7aa5";
+            context.lineWidth = 2;
+            context.beginPath();
+            context.moveTo(pad.left, energyY);
+            context.lineTo(width - pad.right, energyY);
+            context.stroke();
+            context.setLineDash([]);
+
+            context.strokeStyle = "#5a4634";
+            context.lineWidth = 1.4;
+            context.beginPath();
+            context.moveTo(pad.left, pad.top);
+            context.lineTo(pad.left, height - pad.bottom);
+            context.lineTo(width - pad.right, height - pad.bottom);
+            context.stroke();
+
+            context.fillStyle = "#473728";
+            context.font = "14px Georgia, serif";
+            context.fillText("Energy / potential (eV)", pad.left - 18, 18);
+            context.fillText("Position x (nm)", width / 2 - 36, height - 10);
+            context.fillText("V(x)", barrierLeft + 6, scaleY(physicsPayload.barrier_height_ev) - 10);
+            context.fillText("E", width - pad.right - 24, energyY - 8);
+            context.fillText(`T = ${physicsPayload.transmission_probability.toExponential(3)}`, width - 180, 34);
+            context.fillText(`1/κ = ${physicsPayload.penetration_depth_nm.toFixed(3)} nm`, width - 180, 54);
+
+            physicsState.pad = pad;
+            physicsState.scaleX = scaleX;
+            physicsState.width = width;
+            physicsState.height = height;
+            physicsState.xMin = xMin;
+            physicsState.xMax = xMax;
+            physicsState.barrierLeftNm = physicsPayload.barrier_left_nm;
+            physicsState.barrierRightNm = physicsPayload.barrier_right_nm;
+            physicsState.energy = physicsPayload.particle_energy_ev;
+            physicsState.barrier = physicsPayload.barrier_height_ev;
+        }
+
+        function drawWavefunction() {
+            const context = wavefunctionCanvas.getContext("2d");
+            const width = wavefunctionCanvas.width;
+            const height = wavefunctionCanvas.height;
+            const pad = { left: 66, right: 24, top: 24, bottom: 50 };
+            const subplotGap = 22;
+            const upperHeight = (height - pad.top - pad.bottom - subplotGap) / 2;
+            const lowerTop = pad.top + upperHeight + subplotGap;
+
+            context.clearRect(0, 0, width, height);
+            const background = context.createLinearGradient(0, 0, width, height);
+            background.addColorStop(0, "rgba(255, 251, 246, 0.98)");
+            background.addColorStop(1, "rgba(243, 227, 211, 0.96)");
+            context.fillStyle = background;
+            context.fillRect(0, 0, width, height);
+
+            const xValues = wavefunctionPayload.x_nm;
+            const topMode = waveTopMode.value;
+            const upperLabel = {
+                real: "Re[ψ(x)]",
+                imag: "Im[ψ(x)]",
+                magnitude: "|ψ(x)|",
+            };
+            const topValues = {
+                real: wavefunctionPayload.real_wavefunction,
+                imag: wavefunctionPayload.imag_wavefunction,
+                magnitude: wavefunctionPayload.magnitude,
+            }[topMode];
+            const densityValues = wavefunctionPayload.density;
+            const xMin = Math.min(...xValues);
+            const xMax = Math.max(...xValues);
+            const maxReal = Math.max(...topValues.map((value) => Math.abs(value))) || 1;
+            const maxDensity = Math.max(...densityValues) || 1;
+
+            const scaleX = (value) => pad.left + ((value - xMin) / (xMax - xMin)) * (width - pad.left - pad.right);
+            const scaleUpperY = (value) => pad.top + upperHeight / 2 - (value / maxReal) * (upperHeight * 0.42);
+            const scaleLowerY = (value) => lowerTop + upperHeight - (value / maxDensity) * (upperHeight * 0.84);
+
+            const barrierLeft = scaleX(wavefunctionPayload.barrier_left_nm);
+            const barrierRight = scaleX(wavefunctionPayload.barrier_right_nm);
+            context.fillStyle = "rgba(255, 173, 66, 0.18)";
+            context.fillRect(barrierLeft, pad.top, barrierRight - barrierLeft, upperHeight);
+            context.fillRect(barrierLeft, lowerTop, barrierRight - barrierLeft, upperHeight);
+
+            context.strokeStyle = "rgba(88, 67, 50, 0.12)";
+            context.lineWidth = 1;
+            for (let step = 0; step <= 6; step += 1) {
+                const x = pad.left + ((width - pad.left - pad.right) / 6) * step;
+                context.beginPath();
+                context.moveTo(x, pad.top);
+                context.lineTo(x, lowerTop + upperHeight);
+                context.stroke();
+            }
+
+            context.strokeStyle = "#3276a8";
+            context.lineWidth = 2.5;
+            context.beginPath();
+            for (let index = 0; index < xValues.length; index += 1) {
+                const x = scaleX(xValues[index]);
+                const y = scaleUpperY(topValues[index]);
+                if (index === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+            }
+            context.stroke();
+
+            context.strokeStyle = "#f08c2e";
+            context.lineWidth = 2.5;
+            context.beginPath();
+            for (let index = 0; index < xValues.length; index += 1) {
+                const x = scaleX(xValues[index]);
+                const y = scaleLowerY(densityValues[index]);
+                if (index === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+            }
+            context.stroke();
+
+            context.strokeStyle = "#5a4634";
+            context.lineWidth = 1.2;
+            context.beginPath();
+            context.moveTo(pad.left, pad.top + upperHeight / 2);
+            context.lineTo(width - pad.right, pad.top + upperHeight / 2);
+            context.stroke();
+            context.beginPath();
+            context.moveTo(pad.left, lowerTop + upperHeight);
+            context.lineTo(width - pad.right, lowerTop + upperHeight);
+            context.stroke();
+            context.beginPath();
+            context.moveTo(pad.left, pad.top);
+            context.lineTo(pad.left, lowerTop + upperHeight);
+            context.stroke();
+
+            context.fillStyle = "#473728";
+            context.font = "14px Georgia, serif";
+            context.fillText(upperLabel[topMode], pad.left + 8, pad.top + 16);
+            context.fillText("|ψ(x)|²", pad.left + 8, lowerTop + 16);
+            context.fillText("Position x (nm)", width / 2 - 36, height - 12);
+            context.fillText("Barrier", barrierLeft + 10, pad.top + 16);
+        }
+
+        function drawComparison() {
+            const context = comparisonCanvas.getContext("2d");
+            const width = comparisonCanvas.width;
+            const height = comparisonCanvas.height;
+            const pad = { left: 70, right: 24, top: 26, bottom: 54 };
+            context.clearRect(0, 0, width, height);
+
+            const background = context.createLinearGradient(0, 0, width, height);
+            background.addColorStop(0, "rgba(255, 251, 246, 0.98)");
+            background.addColorStop(1, "rgba(243, 227, 211, 0.96)");
+            context.fillStyle = background;
+            context.fillRect(0, 0, width, height);
+
+            const widths = comparisonPayload.width_values_nm;
+            const exact = comparisonPayload.exact_values;
+            const predicted = comparisonPayload.predicted_values;
+            const errorCurve = comparisonPayload.relative_error_values;
+            const xMin = Math.min(...widths);
+            const xMax = Math.max(...widths);
+            const yMinLog = -16;
+            const yMaxLog = 0;
+
+            const scaleX = (value) => pad.left + ((value - xMin) / (xMax - xMin)) * (width - pad.left - pad.right);
+            const scaleY = (value) => {
+                const logValue = clamp(Math.log10(Math.max(value, 1e-16)), yMinLog, yMaxLog);
+                return height - pad.bottom - ((logValue - yMinLog) / (yMaxLog - yMinLog)) * (height - pad.top - pad.bottom);
+            };
+
+            drawGrid(context, width, height, { left: pad.left, right: pad.right }, { top: pad.top, bottom: pad.bottom }, 6, 4, "rgba(88, 67, 50, 0.1)");
+
+            context.strokeStyle = "#f08c2e";
+            context.lineWidth = 3;
+            context.beginPath();
+            for (let index = 0; index < widths.length; index += 1) {
+                const x = scaleX(widths[index]);
+                const y = scaleY(exact[index]);
+                if (index === 0) {
+                    context.moveTo(x, y);
+                } else {
+                    context.lineTo(x, y);
+                }
+            }
+            context.stroke();
+
+            if (predicted.length) {
+                context.strokeStyle = "#1f7aa5";
+                context.lineWidth = 3;
+                context.beginPath();
+                for (let index = 0; index < widths.length; index += 1) {
+                    const x = scaleX(widths[index]);
+                    const y = scaleY(predicted[index]);
+                    if (index === 0) {
+                        context.moveTo(x, y);
+                    } else {
+                        context.lineTo(x, y);
+                    }
+                }
+                context.stroke();
+            }
+
+            const currentX = scaleX(comparisonPayload.current_width_nm);
+            context.setLineDash([8, 7]);
+            context.strokeStyle = "rgba(73, 54, 38, 0.48)";
+            context.beginPath();
+            context.moveTo(currentX, pad.top);
+            context.lineTo(currentX, height - pad.bottom);
+            context.stroke();
+            context.setLineDash([]);
+
+            context.fillStyle = "#473728";
+            context.font = "14px Georgia, serif";
+            context.fillText("Transmission probability (log scale)", pad.left - 18, 18);
+            context.fillText("Barrier width a (nm)", width / 2 - 44, height - 12);
+            context.fillStyle = "#f08c2e";
+            context.fillText("Exact", width - 132, 28);
+            context.fillStyle = "#1f7aa5";
+            context.fillText("Neural", width - 84, 28);
+
+            comparisonState.widths = widths;
+            comparisonState.exact = exact;
+            comparisonState.predicted = predicted;
+            comparisonState.errorCurve = errorCurve;
+            comparisonState.scaleX = scaleX;
+            comparisonState.scaleY = scaleY;
+            comparisonState.pad = pad;
+            comparisonState.width = width;
+            comparisonState.height = height;
+            comparisonState.currentX = currentX;
+        }
+
+        function normalizeSurfaceValue(mode, value, range) {
+            if (mode === "error") {
+                const span = Math.max(range.max - range.min, 1e-9);
+                return clamp(Math.sqrt((value - range.min) / span), 0, 1);
+            }
+            const logMin = Math.log10(Math.max(range.min, 1e-40));
+            const logMax = Math.log10(Math.max(range.max, 1e-40));
+            const span = Math.max(logMax - logMin, 1e-9);
+            const logValue = Math.log10(Math.max(value, 1e-40));
+            return clamp(Math.pow((logValue - logMin) / span, 0.92), 0, 1);
+        }
+
+        function getSurfaceValue(mode, row, column) {
+            if (mode === "predicted" && surfacePayload.predicted_grid.length) {
+                return surfacePayload.predicted_grid[row][column];
+            }
+            if (mode === "error" && surfacePayload.error_grid.length) {
+                return surfacePayload.error_grid[row][column];
+            }
+            return surfacePayload.exact_grid[row][column];
+        }
+
+        function projectPoint(x, y, z, options) {
+            const azimuth = (options.azimuth * Math.PI) / 180;
+            const elevation = (options.elevation * Math.PI) / 180;
+            const zScaled = z * (options.heightScale / 100);
+            const x1 = x * Math.cos(azimuth) - y * Math.sin(azimuth);
+            const y1 = x * Math.sin(azimuth) + y * Math.cos(azimuth);
+            const y2 = y1 * Math.cos(elevation) - zScaled * Math.sin(elevation);
+            const z2 = y1 * Math.sin(elevation) + zScaled * Math.cos(elevation);
+            const perspective = 1.04 + (1.0 - y2) * 0.08;
+            return {
+                x: surfaceCanvas.width * 0.5 + x1 * 208 * options.zoom * perspective,
+                y: surfaceCanvas.height * 0.73 - z2 * 214 * options.zoom,
+                depth: y2,
+            };
+        }
+
+        function drawSurfaceBackground() {
+            const gradient = surfaceContext.createLinearGradient(0, 0, 0, surfaceCanvas.height);
+            gradient.addColorStop(0, "rgba(18, 39, 58, 0.98)");
+            gradient.addColorStop(0.62, "rgba(24, 58, 78, 0.94)");
+            gradient.addColorStop(1, "rgba(22, 44, 59, 0.98)");
+            surfaceContext.fillStyle = gradient;
+            surfaceContext.fillRect(0, 0, surfaceCanvas.width, surfaceCanvas.height);
+
+            surfaceContext.strokeStyle = "rgba(255, 255, 255, 0.07)";
+            surfaceContext.lineWidth = 1;
+            surfaceContext.beginPath();
+            surfaceContext.moveTo(0, surfaceCanvas.height * 0.78);
+            surfaceContext.lineTo(surfaceCanvas.width, surfaceCanvas.height * 0.78);
+            surfaceContext.stroke();
+        }
+
+        function drawAxes(options) {
+            const origin = projectPoint(-1, -1, 0, options);
+            const axisX = projectPoint(1.08, -1, 0, options);
+            const axisY = projectPoint(-1, 1.08, 0, options);
+            const axisZ = projectPoint(-1, -1, 1.14, options);
+
+            surfaceContext.lineWidth = 1.3;
+            surfaceContext.strokeStyle = "rgba(255, 255, 255, 0.36)";
+            for (const axis of [axisX, axisY, axisZ]) {
+                surfaceContext.beginPath();
+                surfaceContext.moveTo(origin.x, origin.y);
+                surfaceContext.lineTo(axis.x, axis.y);
+                surfaceContext.stroke();
+            }
+
+            surfaceContext.fillStyle = "rgba(255, 252, 247, 0.9)";
+            surfaceContext.font = "13px Georgia, serif";
+            surfaceContext.fillText("Barrier width a", axisX.x - 10, axisX.y + 20);
+            surfaceContext.fillText("Particle energy E", axisY.x - 12, axisY.y + 20);
+            surfaceContext.fillText("Surface height", axisZ.x + 8, axisZ.y - 8);
+        }
+
+        function drawContours(options, normalizedGrid) {
+            const contourCount = Number(surfaceControls.contours.value);
+            surfaceContext.strokeStyle = "rgba(255, 255, 255, 0.22)";
+            surfaceContext.lineWidth = 0.8;
+            const rows = normalizedGrid.length;
+            const columns = normalizedGrid[0].length;
+
+            function interpolatePoint(start, end, level) {
+                const span = end.z - start.z || 1e-9;
+                const t = clamp((level - start.z) / span, 0, 1);
+                const x = lerp(start.x, end.x, t);
+                const y = lerp(start.y, end.y, t);
+                const z = lerp(start.z, end.z, t);
+                return projectPoint(x, y, z, options);
+            }
+
+            for (let contour = 1; contour <= contourCount; contour += 1) {
+                const level = contour / (contourCount + 1);
+                for (let row = 0; row < rows - 1; row += 1) {
+                    for (let column = 0; column < columns - 1; column += 1) {
+                        const x0 = (column / (columns - 1)) * 2 - 1;
+                        const x1 = ((column + 1) / (columns - 1)) * 2 - 1;
+                        const y0 = (row / (rows - 1)) * 2 - 1;
+                        const y1 = ((row + 1) / (rows - 1)) * 2 - 1;
+                        const p00 = { x: x0, y: y0, z: normalizedGrid[row][column] };
+                        const p10 = { x: x1, y: y0, z: normalizedGrid[row][column + 1] };
+                        const p11 = { x: x1, y: y1, z: normalizedGrid[row + 1][column + 1] };
+                        const p01 = { x: x0, y: y1, z: normalizedGrid[row + 1][column] };
+                        const intersections = [];
+
+                        for (const [start, end] of [[p00, p10], [p10, p11], [p11, p01], [p01, p00]]) {
+                            const minValue = Math.min(start.z, end.z);
+                            const maxValue = Math.max(start.z, end.z);
+                            if (level >= minValue && level <= maxValue && start.z !== end.z) {
+                                intersections.push(interpolatePoint(start, end, level));
+                            }
+                        }
+
+                        if (intersections.length === 2) {
+                            surfaceContext.beginPath();
+                            surfaceContext.moveTo(intersections[0].x, intersections[0].y);
+                            surfaceContext.lineTo(intersections[1].x, intersections[1].y);
+                            surfaceContext.stroke();
+                        } else if (intersections.length === 4) {
+                            surfaceContext.beginPath();
+                            surfaceContext.moveTo(intersections[0].x, intersections[0].y);
+                            surfaceContext.lineTo(intersections[1].x, intersections[1].y);
+                            surfaceContext.stroke();
+                            surfaceContext.beginPath();
+                            surfaceContext.moveTo(intersections[2].x, intersections[2].y);
+                            surfaceContext.lineTo(intersections[3].x, intersections[3].y);
+                            surfaceContext.stroke();
+                        }
+                    }
+                }
+            }
+        }
+
+        const surfaceControls = {
+            mode: document.getElementById("surfaceMode"),
+            azimuth: document.getElementById("surfaceAzimuth"),
+            elevation: document.getElementById("surfaceElevation"),
+            heightScale: document.getElementById("surfaceHeightScale"),
+            contours: document.getElementById("surfaceContours"),
+            palette: document.getElementById("surfacePalette"),
+        };
+
+        const surfaceState = {
+            zoom: 1,
+            hoverTargets: [],
+            pinnedPoint: null,
+            hoverPoint: null,
+            defaultPoint: null,
+            dragging: false,
+            previousX: 0,
+            previousY: 0,
+        };
+
+        function updateSurfaceReadouts(mode, palette) {
+            const energyValues = surfacePayload.energy_values;
+            const widthValues = surfacePayload.width_values;
+            surfaceUI.energyRange.textContent = `${energyValues[0].toFixed(2)} to ${energyValues[energyValues.length - 1].toFixed(2)} eV`;
+            surfaceUI.widthRange.textContent = `${widthValues[0].toFixed(2)} to ${widthValues[widthValues.length - 1].toFixed(2)} nm`;
+            surfaceUI.activeView.textContent = `${surfaceModeMeta[mode].shortLabel} • ${toTitleCase(palette)}`;
+            surfaceUI.modeTitle.textContent = surfaceModeMeta[mode].title;
+            surfaceUI.modeDescription.textContent = surfaceModeMeta[mode].description;
+            surfaceUI.modeValue.textContent = surfaceModeMeta[mode].shortLabel;
+            surfaceUI.azimuthValue.textContent = `${surfaceControls.azimuth.value}°`;
+            surfaceUI.elevationValue.textContent = `${surfaceControls.elevation.value}°`;
+            surfaceUI.heightScaleValue.textContent = `${surfaceControls.heightScale.value}%`;
+            surfaceUI.contoursValue.textContent = surfaceControls.contours.value;
+            surfaceUI.paletteValue.textContent = toTitleCase(palette);
+            surfaceUI.zoomValue.textContent = `${surfaceState.zoom.toFixed(2)}×`;
+        }
+
+        function updateSurfaceInspector(target, title) {
+            if (!target) {
+                return;
+            }
+            surfaceUI.inspectorTitle.textContent = title;
+            surfaceUI.inspectorEnergy.textContent = `${target.energy.toFixed(2)} eV`;
+            surfaceUI.inspectorWidth.textContent = `${target.width.toFixed(2)} nm`;
+            surfaceUI.inspectorExact.textContent = formatTransmission(target.exact);
+            surfaceUI.inspectorPredicted.textContent = target.predicted !== null ? formatTransmission(target.predicted) : "Unavailable";
+            surfaceUI.inspectorError.textContent = target.error !== null ? formatPercent(target.error) : "Unavailable";
+        }
+
+        function findNearestSurfaceTarget(localX, localY) {
+            let nearest = null;
+            let bestDistance = 24;
+            for (const target of surfaceState.hoverTargets) {
+                const distance = Math.hypot(target.x - localX, target.y - localY);
+                if (distance < bestDistance) {
+                    nearest = target;
+                    bestDistance = distance;
+                }
+            }
+            return nearest;
+        }
+
+        function resolveSurfaceFocusTarget() {
+            if (surfaceState.pinnedPoint) {
+                return (
+                    surfaceState.hoverTargets.find(
+                        (target) =>
+                            target.row === surfaceState.pinnedPoint.row &&
+                            target.column === surfaceState.pinnedPoint.column
+                    ) || surfaceState.hoverTargets[0] || null
+                );
+            }
+            return surfaceState.hoverPoint || surfaceState.defaultPoint || surfaceState.hoverTargets[0] || null;
+        }
+
+        function drawSurfaceFocusMarker(target) {
+            if (!target) {
+                return;
+            }
+            surfaceContext.save();
+            surfaceContext.strokeStyle = "rgba(255, 255, 255, 0.95)";
+            surfaceContext.lineWidth = 1.8;
+            surfaceContext.beginPath();
+            surfaceContext.arc(target.x, target.y, 7, 0, Math.PI * 2);
+            surfaceContext.stroke();
+            surfaceContext.fillStyle = "rgba(255, 204, 112, 0.95)";
+            surfaceContext.beginPath();
+            surfaceContext.arc(target.x, target.y, 3.2, 0, Math.PI * 2);
+            surfaceContext.fill();
+            surfaceContext.restore();
+        }
+
+        function drawSurface() {
+            const mode = surfaceControls.mode.value;
+            const palette = surfaceControls.palette.value;
+            const options = {
+                azimuth: Number(surfaceControls.azimuth.value),
+                elevation: Number(surfaceControls.elevation.value),
+                heightScale: Number(surfaceControls.heightScale.value),
+                zoom: surfaceState.zoom,
+            };
+            const range = getSurfaceRange(mode);
+
+            renderLegend(palette, mode, range);
+            updateSurfaceReadouts(mode, palette);
+            drawSurfaceBackground();
+            drawAxes(options);
+
+            const rows = surfacePayload.energy_values.length;
+            const columns = surfacePayload.width_values.length;
+            const normalizedGrid = [];
+            const polygons = [];
+            surfaceState.hoverTargets = [];
+
+            for (let row = 0; row < rows; row += 1) {
+                const normalizedRow = [];
+                for (let column = 0; column < columns; column += 1) {
+                    normalizedRow.push(normalizeSurfaceValue(mode, getSurfaceValue(mode, row, column), range));
+                }
+                normalizedGrid.push(normalizedRow);
+            }
+
+            for (let row = 0; row < rows - 1; row += 1) {
+                for (let column = 0; column < columns - 1; column += 1) {
+                    const x0 = (column / (columns - 1)) * 2 - 1;
+                    const x1 = ((column + 1) / (columns - 1)) * 2 - 1;
+                    const y0 = (row / (rows - 1)) * 2 - 1;
+                    const y1 = ((row + 1) / (rows - 1)) * 2 - 1;
+                    const corners = [
+                        projectPoint(x0, y0, normalizedGrid[row][column], options),
+                        projectPoint(x1, y0, normalizedGrid[row][column + 1], options),
+                        projectPoint(x1, y1, normalizedGrid[row + 1][column + 1], options),
+                        projectPoint(x0, y1, normalizedGrid[row + 1][column], options),
+                    ];
+                    const depth = corners.reduce((sum, point) => sum + point.depth, 0) / corners.length;
+                    const meanValue = (
+                        normalizedGrid[row][column] +
+                        normalizedGrid[row][column + 1] +
+                        normalizedGrid[row + 1][column + 1] +
+                        normalizedGrid[row + 1][column]
+                    ) / 4;
+                    polygons.push({ corners, depth, color: getPaletteColor(palette, meanValue) });
+                }
+            }
+
+            polygons.sort((a, b) => a.depth - b.depth);
+            for (const polygon of polygons) {
+                surfaceContext.beginPath();
+                surfaceContext.moveTo(polygon.corners[0].x, polygon.corners[0].y);
+                for (let index = 1; index < polygon.corners.length; index += 1) {
+                    surfaceContext.lineTo(polygon.corners[index].x, polygon.corners[index].y);
+                }
+                surfaceContext.closePath();
+                surfaceContext.fillStyle = colorToString(polygon.color, 0.95);
+                surfaceContext.fill();
+                surfaceContext.strokeStyle = colorToString(mixColor(polygon.color, parseColor("#ffffff"), 0.18), 0.06);
+                surfaceContext.lineWidth = 0.6;
+                surfaceContext.stroke();
+            }
+
+            drawContours(options, normalizedGrid);
+
+            for (let row = 0; row < rows; row += 1) {
+                for (let column = 0; column < columns; column += 1) {
+                    const x = (column / (columns - 1)) * 2 - 1;
+                    const y = (row / (rows - 1)) * 2 - 1;
+                    const point = projectPoint(x, y, normalizedGrid[row][column], options);
+                    surfaceState.hoverTargets.push({
+                        x: point.x,
+                        y: point.y,
+                        row,
+                        column,
+                        energy: surfacePayload.energy_values[row],
+                        width: surfacePayload.width_values[column],
+                        exact: surfacePayload.exact_grid[row][column],
+                        predicted: surfacePayload.predicted_grid.length ? surfacePayload.predicted_grid[row][column] : null,
+                        error: surfacePayload.error_grid.length ? surfacePayload.error_grid[row][column] : null,
+                    });
+                }
+            }
+
+            const centerRow = Math.floor(rows / 2);
+            const centerColumn = Math.floor(columns / 2);
+            surfaceState.defaultPoint =
+                surfaceState.hoverTargets.find(
+                    (target) => target.row === centerRow && target.column === centerColumn
+                ) || surfaceState.hoverTargets[0] || null;
+
+            const focusTarget = resolveSurfaceFocusTarget();
+            if (focusTarget) {
+                if (surfaceState.pinnedPoint || surfaceState.hoverPoint) {
+                    drawSurfaceFocusMarker(focusTarget);
+                }
+                updateSurfaceInspector(
+                    focusTarget,
+                    surfaceState.pinnedPoint
+                        ? "Pinned sample"
+                        : surfaceState.hoverPoint
+                          ? "Hover sample"
+                          : "Center sample"
+                );
+            }
+
+            surfaceContext.fillStyle = "rgba(255, 252, 247, 0.94)";
+            surfaceContext.font = "13px Georgia, serif";
+            const modeLabel = {
+                exact: "Exact transmission surface",
+                predicted: "Neural transmission surface",
+                error: "Relative error surface",
+            };
+            surfaceContext.fillText(modeLabel[mode], 30, 34);
+        }
+
+        surfaceCanvas.addEventListener("pointerdown", (event) => {
+            surfaceState.dragging = true;
+            surfaceState.previousX = event.clientX;
+            surfaceState.previousY = event.clientY;
+            surfaceUI.interactionState.textContent = "Rotating view";
+            surfaceCanvas.setPointerCapture(event.pointerId);
+        });
+
+        surfaceCanvas.addEventListener("pointermove", (event) => {
+            if (surfaceState.dragging) {
+                const deltaX = event.clientX - surfaceState.previousX;
+                const deltaY = event.clientY - surfaceState.previousY;
+                surfaceControls.azimuth.value = clamp(Number(surfaceControls.azimuth.value) + deltaX * 0.65, -180, 180);
+                surfaceControls.elevation.value = clamp(Number(surfaceControls.elevation.value) - deltaY * 0.35, 10, 85);
+                surfaceState.previousX = event.clientX;
+                surfaceState.previousY = event.clientY;
+                drawSurface();
+            }
+
+            const rect = surfaceCanvas.getBoundingClientRect();
+            const localX = ((event.clientX - rect.left) / rect.width) * surfaceCanvas.width;
+            const localY = ((event.clientY - rect.top) / rect.height) * surfaceCanvas.height;
+            let nearest = findNearestSurfaceTarget(localX, localY);
+
+            if (nearest) {
+                surfaceState.hoverPoint = nearest;
+                if (!surfaceState.pinnedPoint) {
+                    updateSurfaceInspector(nearest, "Hover sample");
+                }
+                surfaceTooltip.hidden = false;
+                surfaceTooltip.style.left = `${event.clientX - rect.left + 18}px`;
+                surfaceTooltip.style.top = `${event.clientY - rect.top - 18}px`;
+                surfaceTooltip.innerHTML = `
+                    <strong>E = ${nearest.energy.toFixed(2)} eV</strong><br>
+                    a = ${nearest.width.toFixed(2)} nm<br>
+                    Exact: ${nearest.exact.toExponential(3)}<br>
+                    ${nearest.predicted !== null ? `Pred: ${nearest.predicted.toExponential(3)}<br>` : ""}
+                    ${nearest.error !== null ? `Error: ${(nearest.error * 100).toFixed(2)}%` : ""}
+                `;
+                if (!surfaceState.dragging) {
+                    surfaceUI.interactionState.textContent = "Inspecting sample";
+                }
+            } else {
+                surfaceState.hoverPoint = null;
+                surfaceTooltip.hidden = true;
+                if (!surfaceState.pinnedPoint) {
+                    updateSurfaceInspector(surfaceState.defaultPoint, "Center sample");
+                }
+                if (!surfaceState.dragging) {
+                    surfaceUI.interactionState.textContent = "Drag, zoom, inspect";
+                }
+            }
+        });
+
+        surfaceCanvas.addEventListener("pointerup", () => {
+            surfaceState.dragging = false;
+            surfaceUI.interactionState.textContent = surfaceState.pinnedPoint ? "Pinned sample" : "Drag, zoom, inspect";
+        });
+
+        surfaceCanvas.addEventListener("pointerleave", () => {
+            surfaceState.dragging = false;
+            surfaceTooltip.hidden = true;
+            surfaceState.hoverPoint = null;
+            updateSurfaceInspector(surfaceState.pinnedPoint || surfaceState.defaultPoint, surfaceState.pinnedPoint ? "Pinned sample" : "Center sample");
+            surfaceUI.interactionState.textContent = surfaceState.pinnedPoint ? "Pinned sample" : "Drag, zoom, inspect";
+        });
+
+        surfaceCanvas.addEventListener("wheel", (event) => {
+            event.preventDefault();
+            surfaceState.zoom = clamp(surfaceState.zoom + (event.deltaY < 0 ? 0.06 : -0.06), 0.72, 1.5);
+            surfaceUI.interactionState.textContent = `Zoom ${surfaceState.zoom.toFixed(2)}×`;
+            drawSurface();
+        }, { passive: false });
+
+        surfaceCanvas.addEventListener("click", (event) => {
+            const rect = surfaceCanvas.getBoundingClientRect();
+            const localX = ((event.clientX - rect.left) / rect.width) * surfaceCanvas.width;
+            const localY = ((event.clientY - rect.top) / rect.height) * surfaceCanvas.height;
+            const nearest = findNearestSurfaceTarget(localX, localY);
+            if (!nearest) {
+                return;
+            }
+            if (
+                surfaceState.pinnedPoint &&
+                surfaceState.pinnedPoint.row === nearest.row &&
+                surfaceState.pinnedPoint.column === nearest.column
+            ) {
+                surfaceState.pinnedPoint = null;
+                surfaceUI.interactionState.textContent = "Pin released";
+            } else {
+                surfaceState.pinnedPoint = nearest;
+                surfaceUI.interactionState.textContent = "Pinned sample";
+            }
+            drawSurface();
+        });
+
+        surfacePresetButtons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const preset = button.dataset.surfaceView;
+                const config = surfacePresets[preset];
+                if (config) {
+                    surfaceControls.azimuth.value = String(config.azimuth);
+                    surfaceControls.elevation.value = String(config.elevation);
+                    surfaceControls.heightScale.value = String(config.heightScale);
+                    surfaceControls.contours.value = String(config.contours);
+                    surfaceState.zoom = config.zoom;
+                }
+                surfaceUI.interactionState.textContent = `${toTitleCase(preset)} preset`;
+                drawSurface();
+            });
+        });
+
+        physicsCanvas.addEventListener("pointermove", (event) => {
+            const rect = physicsCanvas.getBoundingClientRect();
+            const localX = ((event.clientX - rect.left) / rect.width) * physicsCanvas.width;
+            const localY = ((event.clientY - rect.top) / rect.height) * physicsCanvas.height;
+            const pad = physicsState.pad;
+            if (!pad || localX < pad.left || localX > physicsState.width - pad.right || localY < pad.top || localY > physicsState.height - pad.bottom) {
+                physicsTooltip.hidden = true;
+                return;
+            }
+
+            const ratio = (localX - pad.left) / (physicsState.width - pad.left - pad.right);
+            const xNm = physicsState.xMin + ratio * (physicsState.xMax - physicsState.xMin);
+            const inBarrier = xNm >= physicsState.barrierLeftNm && xNm <= physicsState.barrierRightNm;
+            physicsTooltip.hidden = false;
+            physicsTooltip.style.left = `${event.clientX - rect.left + 16}px`;
+            physicsTooltip.style.top = `${event.clientY - rect.top - 16}px`;
+            physicsTooltip.innerHTML = `
+                <strong>x = ${xNm.toFixed(3)} nm</strong><br>
+                Region: ${inBarrier ? "classically forbidden" : "free"}<br>
+                V(x): ${(inBarrier ? physicsState.barrier : 0).toFixed(2)} eV<br>
+                E: ${physicsState.energy.toFixed(2)} eV
+            `;
+        });
+
+        physicsCanvas.addEventListener("pointerleave", () => {
+            physicsTooltip.hidden = true;
+        });
+
+        comparisonCanvas.addEventListener("pointermove", (event) => {
+            const rect = comparisonCanvas.getBoundingClientRect();
+            const localX = ((event.clientX - rect.left) / rect.width) * comparisonCanvas.width;
+            const localY = ((event.clientY - rect.top) / rect.height) * comparisonCanvas.height;
+            const pad = comparisonState.pad;
+            if (!pad || localX < pad.left || localX > comparisonState.width - pad.right || localY < pad.top || localY > comparisonState.height - pad.bottom) {
+                comparisonTooltip.hidden = true;
+                drawComparison();
+                return;
+            }
+
+            let nearestIndex = 0;
+            let nearestDistance = Infinity;
+            for (let index = 0; index < comparisonState.widths.length; index += 1) {
+                const distance = Math.abs(comparisonState.scaleX(comparisonState.widths[index]) - localX);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestIndex = index;
+                }
+            }
+
+            drawComparison();
+            const x = comparisonState.scaleX(comparisonState.widths[nearestIndex]);
+            const exactY = comparisonState.scaleY(comparisonState.exact[nearestIndex]);
+            const predictedY = comparisonState.predicted.length ? comparisonState.scaleY(comparisonState.predicted[nearestIndex]) : null;
+            const context = comparisonCanvas.getContext("2d");
+            context.fillStyle = "#f08c2e";
+            context.beginPath();
+            context.arc(x, exactY, 4.5, 0, Math.PI * 2);
+            context.fill();
+            if (predictedY !== null) {
+                context.fillStyle = "#1f7aa5";
+                context.beginPath();
+                context.arc(x, predictedY, 4.5, 0, Math.PI * 2);
+                context.fill();
+            }
+
+            comparisonTooltip.hidden = false;
+            comparisonTooltip.style.left = `${event.clientX - rect.left + 16}px`;
+            comparisonTooltip.style.top = `${event.clientY - rect.top - 16}px`;
+            comparisonTooltip.innerHTML = `
+                <strong>a = ${comparisonState.widths[nearestIndex].toFixed(3)} nm</strong><br>
+                Exact: ${comparisonState.exact[nearestIndex].toExponential(3)}<br>
+                ${comparisonState.predicted.length ? `Neural: ${comparisonState.predicted[nearestIndex].toExponential(3)}<br>` : ""}
+                ${comparisonState.errorCurve.length ? `Error: ${(comparisonState.errorCurve[nearestIndex] * 100).toFixed(2)}%` : ""}
+            `;
+        });
+
+        comparisonCanvas.addEventListener("pointerleave", () => {
+            comparisonTooltip.hidden = true;
+            drawComparison();
+        });
+
+        for (const control of Object.values(surfaceControls)) {
+            control.addEventListener("input", drawSurface);
+        }
+
+        waveTopMode.addEventListener("input", drawWavefunction);
+
+        drawBarrierPhysics();
+        drawWavefunction();
+        drawComparison();
+        drawSurface();
+    </script>
+</body>
+</html>
