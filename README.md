@@ -222,7 +222,6 @@ Before deploying publicly, replace the demo Django settings with production-safe
 - use a production database if user data will be stored
 - serve static files through a production-ready setup
 
-For GitHub publishing, avoid committing local runtime files such as `.venv/`, `__pycache__/`, `.DS_Store`, and local SQLite databases unless they are intentionally part of the demo.
 
 ## Roadmap
 
@@ -232,6 +231,3 @@ For GitHub publishing, avoid committing local runtime files such as `.venv/`, `_
 - Add residual/error visualization directly in the UI
 - Explore physics-informed neural-network approaches
 
-## License
-
-Add a license file before publishing if you want others to use, modify, or distribute the project.
